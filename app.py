@@ -1,5 +1,6 @@
 import gradio as gr
-from prediction import get_prediction_results, list_available_records
+from prediction import list_available_records, read_ecg_signal, get_deepfake_ecg
+import requests
 
 def update_sample_visibility(choice):
     return gr.update(visible=(choice == "MIT database"))
@@ -54,7 +55,7 @@ with gr.Blocks() as demo:
         ecg_data.change(fn=update_sample_visibility, inputs=ecg_data, outputs=sample_id)
         
         def display_results(ecg_data, sample_id):
-            output = get_prediction_results(ecg_data, sample_id)
+            output = send_request(ecg_data, sample_id)
             
             return f"""
             ### Prediction Results
@@ -70,6 +71,32 @@ with gr.Blocks() as demo:
         )
 
 
+def send_request(data_name, sample_id):
+    if data_name == "MIT database":
+        ecg_signal, fields = read_ecg_signal(sample_id)  # Example record ID
+        ecg_signal = ecg_signal[:, 0]  # Use the first channel if multi-channel
+        sample_rate = fields['fs']
+    else:
+        ecg_signal = get_deepfake_ecg()[:,1]  # Example generated signal
+        sample_rate = 500
+    
+    # write the signal to a  txt file
+    with open("user_files/ecg_signal.txt", "w") as f:
+        for value in ecg_signal:
+            f.write(f"{value}\n")
+    
+    result = requests.post(
+        "http://localhost:5000/api/predict",
+        files={"ecg_file": open("user_files/ecg_signal.txt", "rb")},
+        data={"sample_rate": sample_rate}
+    ).json()
+
+
+
+    # 2. Classify the signal
+    # print(f"Classification: {result['classification']}")
+    # print(f"Confidence: {result['confidence']:.2f}")
+    return result
 
 if __name__ == "__main__":
     demo.launch()
