@@ -35,12 +35,21 @@ with gr.Blocks() as demo:
                 interactive=True,
                 visible=True,
             )
+
+            sample_rate = gr.Number(
+                label="Sample Rate (Hz)",
+                precision=0,
+                value=500,
+                interactive=True,
+                visible=True
+            )
             
             predict_btn = gr.Button(
                 "Get Prediction",
                 variant="primary",
                 interactive=True,
             )
+
 
         with gr.Column():
             gr.Markdown("## Prediction Results")
@@ -54,8 +63,8 @@ with gr.Blocks() as demo:
             
         ecg_data.change(fn=update_sample_visibility, inputs=ecg_data, outputs=sample_id)
         
-        def display_results(ecg_data, sample_id):
-            output = send_request(ecg_data, sample_id)
+        def display_results(ecg_data, sample_id, sample_rate):
+            output = send_request(ecg_data, sample_id, sample_rate)
             
             return f"""
             ### Prediction Results
@@ -66,19 +75,19 @@ with gr.Blocks() as demo:
         # Make sure to specify the outputs parameter
         predict_btn.click(
             display_results,
-            inputs=[ecg_data, sample_id],
+            inputs=[ecg_data, sample_id, sample_rate],
             outputs=result
         )
 
 
-def send_request(data_name, sample_id):
+def send_request(data_name, sample_id, sample_rate):
     if data_name == "MIT database":
         ecg_signal, fields = read_ecg_signal(sample_id)  # Example record ID
         ecg_signal = ecg_signal[:, 0]  # Use the first channel if multi-channel
-        sample_rate = fields['fs']
+        # sample_rate = fields['fs']
     else:
         ecg_signal = get_deepfake_ecg()[:,1]  # Example generated signal
-        sample_rate = 500
+        # sample_rate = 500
     
     # write the signal to a  txt file
     with open("user_files/ecg_signal.txt", "w") as f:
